@@ -17,13 +17,10 @@ userRouter.post("/register", async ({request, response}: Context) => {
   const hash: string = await bcrypt.hash(password, await bcrypt.genSalt());
 
   try {
-    await User.create({
-      email,
-      hash,
-      name,
-    })
-  } catch (error) {
-    console.error(error);
+    await User.create({email, hash, name,})
+  } catch (_) {
+    response.status = 500
+    return response.body = {'error': 'Could not create User!'}
   }
 
   response.status = 201
@@ -47,9 +44,8 @@ userRouter.post("/login", async ({request, response}: Context) => {
 
   if (hash !== undefined) {
     const success = await bcrypt.compare(password, hash);
-  
-    if (success && (id != undefined)) {
 
+    if (success && (id != undefined)) {
       const payload = {
         iss: "https://auth.denoland.com",
         sub: id, 
@@ -68,15 +64,26 @@ userRouter.post("/login", async ({request, response}: Context) => {
 });
 
 
-userRouter.get("/info", tokenAuth, ({request, response, state}: Context) => {
-    const user = state.user;
-    console.log(user);
+userRouter.get("/info", tokenAuth, async ({response, state}: Context) => {
+    const payload: Payload = state.user;
+    
+    const user: User = await User.where('email', payload.email).first();
+
+    if (!user) {
+      response.status = 400
+      return response.body = {'error': 'Not registerd or Bad Credentials'}
+    }
+
     response.body = {'msg': 'test'}
 })
 
-
-
-interface LoginDTO {
+export interface Payload {
+  iss: string,
+  sub: string, 
+  email: string,
+  exp: number
+}
+export interface LoginDTO {
   email: string;
   password: string;
 }
